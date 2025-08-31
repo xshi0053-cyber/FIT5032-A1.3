@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "title": "Community Sport Outreach",
+    "area": "Community Sport",
+    "type": "Workshop",
+    "summary": "Local sports programs that promote physical activity and social inclusion."
+  },
+  {
+    "id": 2,
+    "title": "Nutrition Education Hub",
+    "area": "Nutrition",
+    "type": "Resource",
+    "summary": "Evidence-based nutrition guides for families and schools."
+  },
+  {
+    "id": 3,
+    "title": "Youth Wellbeing Chats",
+    "area": "Youth Mental Health",
+    "type": "Support",
+    "summary": "Peer-led sessions focusing on resilience and help-seeking."
+  },
+  {
+    "id": 4,
+    "title": "Men's Health Check Days",
+    "area": "Men's Health",
+    "type": "Clinic",
+    "summary": "Free screenings and education on preventable conditions."
+  },
+  {
+    "id": 5,
+    "title": "Women's Health Connect",
+    "area": "Women's Health",
+    "type": "Program",
+    "summary": "Workshops on reproductive health and community resources."
+  }
+]
