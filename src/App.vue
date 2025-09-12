@@ -12,6 +12,19 @@
           <template v-if="auth.user">
             <span class="small">Hello, {{ auth.user.name }}</span>
             <router-link class="btn btn-sm btn-light" to="/dashboard">Dashboard</router-link>
+            <template v-if="auth.user">
+  <span class="small">Hello, {{ auth.user.name }}</span>
+  <router-link class="btn btn-sm btn-light" to="/dashboard">Dashboard</router-link>
+
+  <router-link
+    v-if="hasRole('admin')"
+    class="btn btn-sm btn-warning"
+    to="/admin"
+  >Admin</router-link>
+
+  <button class="btn btn-sm btn-outline-light" @click="handleLogout">Logout</button>
+</template>
+
             <button class="btn btn-sm btn-outline-light" @click="handleLogout">Logout</button>
           </template>
           <template v-else>
@@ -22,111 +35,117 @@
       </div>
     </section>
 
-    <!-- Programs -->
-    <section class="mb-4">
-      <div class="d-flex flex-column flex-md-row align-items-md-center mb-3 gap-2">
-        <h2 class="h5 mb-0">Programs</h2>
-        <div class="ms-md-auto d-flex gap-2">
-          <input
-            class="form-control"
-            type="search"
-            placeholder="Filter by title…"
-            v-model.trim="filters.q"
-            aria-label="Filter programs"
-          />
-          <select class="form-select" v-model="filters.area" aria-label="Area filter">
-            <option value="">All Areas</option>
-            <option v-for="a in areas" :key="a" :value="a">{{ a }}</option>
-          </select>
-        </div>
-      </div>
+    
+    <router-view v-if="!isHome" />
 
-      <div class="row g-3">
-        <div class="col-12 col-md-6 col-lg-4" v-for="p in filteredPrograms" :key="p.id">
-          <div class="card h-100">
-            <div class="card-body d-flex flex-column">
-              <h3 class="h6">{{ p.title }}</h3>
-              <p class="text-muted small mb-2">Area: {{ p.area }}</p>
-              <p class="mb-3">{{ p.summary }}</p>
-              <div class="mt-auto d-flex justify-content-between align-items-center">
-                <span class="badge text-bg-primary">{{ p.type }}</span>
-                <button class="btn btn-sm btn-outline-primary" @click="selectProgram(p)">Learn more</button>
+   
+    <template v-if="isHome">
+      <!-- Programs -->
+      <section class="mb-4">
+        <div class="d-flex flex-column flex-md-row align-items-md-center mb-3 gap-2">
+          <h2 class="h5 mb-0">Programs</h2>
+          <div class="ms-md-auto d-flex gap-2">
+            <input
+              class="form-control"
+              type="search"
+              placeholder="Filter by title…"
+              v-model.trim="filters.q"
+              aria-label="Filter programs"
+            />
+            <select class="form-select" v-model="filters.area" aria-label="Area filter">
+              <option value="">All Areas</option>
+              <option v-for="a in areas" :key="a" :value="a">{{ a }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-12 col-md-6 col-lg-4" v-for="p in filteredPrograms" :key="p.id">
+            <div class="card h-100">
+              <div class="card-body d-flex flex-column">
+                <h3 class="h6">{{ p.title }}</h3>
+                <p class="text-muted small mb-2">Area: {{ p.area }}</p>
+                <p class="mb-3">{{ p.summary }}</p>
+                <div class="mt-auto d-flex justify-content-between align-items-center">
+                  <span class="badge text-bg-primary">{{ p.type }}</span>
+                  <button class="btn btn-sm btn-outline-primary" @click="selectProgram(p)">Learn more</button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+
+        <!-- Offcanvas -->
+        <div class="offcanvas offcanvas-end" tabindex="-1" id="programCanvas" aria-labelledby="programCanvasLabel">
+          <div class="offcanvas-header">
+            <h5 id="programCanvasLabel">{{ selected?.title || 'Program' }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <p class="mb-1"><strong>Area:</strong> {{ selected?.area }}</p>
+            <p class="mb-1"><strong>Type:</strong> {{ selected?.type }}</p>
+            <p class="mb-3"><strong>Summary:</strong> {{ selected?.summary }}</p>
+            <p class="small text-muted">ID: {{ selected?.id }}</p>
+          </div>
+        </div>
+      </section>
 
       
-      <div class="offcanvas offcanvas-end" tabindex="-1" id="programCanvas" aria-labelledby="programCanvasLabel">
-        <div class="offcanvas-header">
-          <h5 id="programCanvasLabel">{{ selected?.title || 'Program' }}</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-        </div>
-        <div class="offcanvas-body">
-          <p class="mb-1"><strong>Area:</strong> {{ selected?.area }}</p>
-          <p class="mb-1"><strong>Type:</strong> {{ selected?.type }}</p>
-          <p class="mb-3"><strong>Summary:</strong> {{ selected?.summary }}</p>
-          <p class="small text-muted">ID: {{ selected?.id }}</p>
-        </div>
-      </div>
-    </section>
-
-    
-    <section class="mb-5">
-      <h2 class="h5 mb-3">Contact & Referral</h2>
-      <div :class="['card', formStateClass]">
-        <div class="card-body">
-          <form novalidate @submit.prevent="handleSubmit">
-            <div class="row g-3">
-              <div class="col-12 col-md-6">
-                <label class="form-label" for="name">Full name</label>
-                <input id="name" type="text" class="form-control" v-model.trim="form.name" :aria-invalid="!!errors.name" />
-                <div class="invalid-feedback d-block" v-if="errors.name">{{ errors.name }}</div>
-              </div>
-
-              <div class="col-12 col-md-6">
-                <label class="form-label" for="email">Email</label>
-                <input id="email" type="email" class="form-control" v-model.trim="form.email" :aria-invalid="!!errors.email" />
-                <div class="invalid-feedback d-block" v-if="errors.email">{{ errors.email }}</div>
-              </div>
-
-              <div class="col-12 col-md-6">
-                <label class="form-label" for="topic">Program of interest</label>
-                <select id="topic" class="form-select" v-model="form.topic" :aria-invalid="!!errors.topic">
-                  <option value="">Select a program…</option>
-                  <option v-for="p in programs" :key="p.id" :value="p.title">{{ p.title }}</option>
-                </select>
-                <div class="invalid-feedback d-block" v-if="errors.topic">{{ errors.topic }}</div>
-              </div>
-
-              <div class="col-12">
-                <label class="form-label" for="message">Message</label>
-                <textarea id="message" rows="4" class="form-control" v-model.trim="form.message" :aria-invalid="!!errors.message"></textarea>
-                <div class="invalid-feedback d-block" v-if="errors.message">{{ errors.message }}</div>
-              </div>
-
-              <div class="col-12">
-                <div class="form-check">
-                  <input id="consent" class="form-check-input" type="checkbox" v-model="form.consent" :aria-invalid="!!errors.consent" />
-                  <label class="form-check-label" for="consent">I consent to be contacted about this enquiry.</label>
+      <section class="mb-5">
+        <h2 class="h5 mb-3">Contact & Referral</h2>
+        <div :class="['card', formStateClass]">
+          <div class="card-body">
+            <form novalidate @submit.prevent="handleSubmit">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label" for="name">Full name</label>
+                  <input id="name" type="text" class="form-control" v-model.trim="form.name" :aria-invalid="!!errors.name" />
+                  <div class="invalid-feedback d-block" v-if="errors.name">{{ errors.name }}</div>
                 </div>
-                <div class="invalid-feedback d-block" v-if="errors.consent">{{ errors.consent }}</div>
-              </div>
 
-              <div class="col-12 d-flex gap-2">
-                <button class="btn btn-primary" type="submit" :disabled="!canSubmit">Submit</button>
-                <button class="btn btn-outline-secondary" type="button" @click="resetForm">Reset</button>
+                <div class="col-12 col-md-6">
+                  <label class="form-label" for="email">Email</label>
+                  <input id="email" type="email" class="form-control" v-model.trim="form.email" :aria-invalid="!!errors.email" />
+                  <div class="invalid-feedback d-block" v-if="errors.email">{{ errors.email }}</div>
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <label class="form-label" for="topic">Program of interest</label>
+                  <select id="topic" class="form-select" v-model="form.topic" :aria-invalid="!!errors.topic">
+                    <option value="">Select a program…</option>
+                    <option v-for="p in programs" :key="p.id" :value="p.title">{{ p.title }}</option>
+                  </select>
+                  <div class="invalid-feedback d-block" v-if="errors.topic">{{ errors.topic }}</div>
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label" for="message">Message</label>
+                  <textarea id="message" rows="4" class="form-control" v-model.trim="form.message" :aria-invalid="!!errors.message"></textarea>
+                  <div class="invalid-feedback d-block" v-if="errors.message">{{ errors.message }}</div>
+                </div>
+
+                <div class="col-12">
+                  <div class="form-check">
+                    <input id="consent" class="form-check-input" type="checkbox" v-model="form.consent" :aria-invalid="!!errors.consent" />
+                    <label class="form-check-label" for="consent">I consent to be contacted about this enquiry.</label>
+                  </div>
+                  <div class="invalid-feedback d-block" v-if="errors.consent">{{ errors.consent }}</div>
+                </div>
+
+                <div class="col-12 d-flex gap-2">
+                  <button class="btn btn-primary" type="submit" :disabled="!canSubmit">Submit</button>
+                  <button class="btn btn-outline-secondary" type="button" @click="resetForm">Reset</button>
+                </div>
               </div>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
-      </div>
 
-      <div class="alert alert-success mt-3" role="alert" v-if="submitted">
-         Thank you! Your enquiry has been received.
-      </div>
-    </section>
+        <div class="alert alert-success mt-3" role="alert" v-if="submitted">
+           Thank you! Your enquiry has been received.
+        </div>
+      </section>
+    </template>
 
     <footer class="text-center text-muted small py-3">
       <span>© {{ currentYear }} NFP Health Initiative</span>
@@ -136,10 +155,15 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { authState as auth, logout, isAuthenticated } from './authentication' // 若文件名是 auth.js，则改为 './auth'
+import { useRouter, useRoute } from 'vue-router'
+import { authState as auth, logout, isAuthenticated } from './authentication' 
+import { hasRole } from './authentication'
 
-/* ---------- Programs & Filters ---------- */
+
+const route = useRoute()
+const isHome = computed(() => route.name === 'home' || route.path === '/')
+
+
 const programs = ref([])
 const selected = ref(null)
 const areas = ref(['Community Sport','Nutrition','Youth Mental Health',"Men's Health","Women's Health"])
@@ -177,7 +201,7 @@ function selectProgram(p) {
   if (el && window.bootstrap) new window.bootstrap.Offcanvas(el).show()
 }
 
-
+/* Form & Validation */
 const form = reactive({ name: '', email: '', topic: '', message: '', consent: false })
 const submitted = ref(false)
 const errors = reactive({ name: '', email: '', topic: '', message: '', consent: '' })
@@ -197,16 +221,11 @@ const formStateClass = computed(() => (!hasErrors.value ? 'is-valid' : 'is-inval
 const currentYear = new Date().getFullYear()
 
 const router = useRouter()
-
-function handleLogout() {
-  logout()
-  router.push('/')
-}
+function handleLogout() { logout(); router.push('/') }
 
 function handleSubmit() {
   validate()
   if (hasErrors.value) return
-  
   if (!isAuthenticated()) {
     router.push({ name: 'login', query: { redirect: '/' } })
     return
