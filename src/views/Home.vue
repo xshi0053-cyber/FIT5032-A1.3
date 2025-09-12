@@ -1,11 +1,17 @@
 <template>
   <div>
-    <!-- Programs -->
+    
     <section class="mb-4">
       <div class="d-flex flex-column flex-md-row align-items-md-center mb-3 gap-2">
         <h2 class="h5 mb-0">Programs</h2>
         <div class="ms-md-auto d-flex gap-2">
-          <input class="form-control" type="search" placeholder="Filter by title…" v-model.trim="filters.q" aria-label="Filter programs" />
+          <input
+            class="form-control"
+            type="search"
+            placeholder="Filter by title…"
+            v-model.trim="filters.q"
+            aria-label="Filter programs"
+          />
           <select class="form-select" v-model="filters.area" aria-label="Area filter">
             <option value="">All Areas</option>
             <option v-for="a in areas" :key="a" :value="a">{{ a }}</option>
@@ -19,7 +25,31 @@
             <div class="card-body d-flex flex-column">
               <h3 class="h6">{{ p.title }}</h3>
               <p class="text-muted small mb-2">Area: {{ p.area }}</p>
-              <p class="mb-3">{{ p.summary }}</p>
+              <p class="mb-2">{{ p.summary }}</p>
+
+              
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <RatingStars :value="roundedAvg(p.id)" :readonly="true" aria-label="Average rating" />
+                <small class="text-muted">
+                  {{ avgNumber(p.id) }} ({{ ratingMap[p.id]?.count || 0 }})
+                </small>
+              </div>
+
+              
+              <div v-if="isAuthed" class="mb-2">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="small text-muted">Your rating:</span>
+                  <RatingStars
+                    :value="ratingMap[p.id]?.my || 0"
+                    @rate="n => rateProgram(p, n)"
+                    aria-label="Your rating"
+                  />
+                  <small v-if="ratingMap[p.id]?.my" class="text-muted">
+                    ({{ ratingMap[p.id]?.my }}/5)
+                  </small>
+                </div>
+              </div>
+
               <div class="mt-auto d-flex justify-content-between align-items-center">
                 <span class="badge text-bg-primary">{{ p.type }}</span>
                 <button class="btn btn-sm btn-outline-primary" @click="selectProgram(p)">Learn more</button>
@@ -29,7 +59,7 @@
         </div>
       </div>
 
-      <!-- Offcanvas -->
+      
       <div class="offcanvas offcanvas-end" tabindex="-1" id="programCanvas" aria-labelledby="programCanvasLabel">
         <div class="offcanvas-header">
           <h5 id="programCanvasLabel">{{ selected?.title || 'Program' }}</h5>
@@ -44,28 +74,55 @@
       </div>
     </section>
 
-    <!-- Contact & Referral -->
+    
     <section class="mb-5">
       <h2 class="h5 mb-3">Contact & Referral</h2>
+
+      
+      <div class="alert alert-info" v-if="isAdmin">
+        You are signed in as <strong>ADMIN</strong>. Admins cannot submit enquiries here.
+      </div>
+
       <div :class="['card', formStateClass]">
         <div class="card-body">
           <form novalidate @submit.prevent="handleSubmit">
             <div class="row g-3">
               <div class="col-12 col-md-6">
                 <label class="form-label" for="name">Full name</label>
-                <input id="name" type="text" class="form-control" v-model.trim="form.name" :aria-invalid="!!errors.name" />
+                <input
+                  id="name"
+                  type="text"
+                  class="form-control"
+                  v-model.trim="form.name"
+                  maxlength="60"
+                  :disabled="formDisabled"
+                  :aria-invalid="!!errors.name"
+                />
                 <div class="invalid-feedback d-block" v-if="errors.name">{{ errors.name }}</div>
               </div>
 
               <div class="col-12 col-md-6">
                 <label class="form-label" for="email">Email</label>
-                <input id="email" type="email" class="form-control" v-model.trim="form.email" :aria-invalid="!!errors.email" />
+                <input
+                  id="email"
+                  type="email"
+                  class="form-control"
+                  v-model.trim="form.email"
+                  :disabled="formDisabled"
+                  :aria-invalid="!!errors.email"
+                />
                 <div class="invalid-feedback d-block" v-if="errors.email">{{ errors.email }}</div>
               </div>
 
               <div class="col-12 col-md-6">
                 <label class="form-label" for="topic">Program of interest</label>
-                <select id="topic" class="form-select" v-model="form.topic" :aria-invalid="!!errors.topic">
+                <select
+                  id="topic"
+                  class="form-select"
+                  v-model="form.topic"
+                  :disabled="formDisabled"
+                  :aria-invalid="!!errors.topic"
+                >
                   <option value="">Select a program…</option>
                   <option v-for="p in programs" :key="p.id" :value="p.title">{{ p.title }}</option>
                 </select>
@@ -74,21 +131,45 @@
 
               <div class="col-12">
                 <label class="form-label" for="message">Message</label>
-                <textarea id="message" rows="4" class="form-control" v-model.trim="form.message" :aria-invalid="!!errors.message"></textarea>
+                <textarea
+                  id="message"
+                  rows="4"
+                  class="form-control"
+                  v-model.trim="form.message"
+                  maxlength="500"
+                  :disabled="formDisabled"
+                  :aria-invalid="!!errors.message"
+                ></textarea>
+                <div class="form-text text-end">{{ form.message.length }}/500</div>
                 <div class="invalid-feedback d-block" v-if="errors.message">{{ errors.message }}</div>
               </div>
 
               <div class="col-12">
                 <div class="form-check">
-                  <input id="consent" class="form-check-input" type="checkbox" v-model="form.consent" :aria-invalid="!!errors.consent" />
-                  <label class="form-check-label" for="consent">I consent to be contacted about this enquiry.</label>
+                  <input
+                    id="consent"
+                    class="form-check-input"
+                    type="checkbox"
+                    v-model="form.consent"
+                    :disabled="formDisabled"
+                    :aria-invalid="!!errors.consent"
+                  />
+                  <label class="form-check-label" for="consent">
+                    I consent to be contacted about this enquiry.
+                  </label>
                 </div>
                 <div class="invalid-feedback d-block" v-if="errors.consent">{{ errors.consent }}</div>
               </div>
 
               <div class="col-12 d-flex gap-2">
-                <button class="btn btn-primary" type="submit" :disabled="!canSubmit">Submit</button>
-                <button class="btn btn-outline-secondary" type="button" @click="resetForm">Reset</button>
+                <button class="btn btn-primary" type="submit" :disabled="!canSubmit || formDisabled">Submit</button>
+                <button class="btn btn-outline-secondary" type="button" @click="resetForm" :disabled="formDisabled">
+                  Reset
+                </button>
+              </div>
+
+              <div class="col-12" v-if="serverError">
+                <div class="alert alert-danger mt-2 mb-0">{{ serverError }}</div>
               </div>
             </div>
           </form>
@@ -96,7 +177,7 @@
       </div>
 
       <div class="alert alert-success mt-3" role="alert" v-if="submitted">
-         Thank you! Your enquiry has been received.
+        ✅ Thank you! Your enquiry has been received.
       </div>
     </section>
   </div>
@@ -105,12 +186,15 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { isAuthenticated } from '../authentication'
+import RatingStars from '../components/RatingStars.vue'
+import { authState as auth, isAuthenticated, hasRole } from '../authentication.js'
+import { submitEnquiryToServer, getProgramRating, submitProgramRating } from '../serverStub.js'
+import { sanitizeText } from '../utils/sanitize.js'
 
-/* Programs & Filters */
+/* ---------- Programs & Filters ---------- */
 const programs = ref([])
 const selected = ref(null)
-const areas = ref(['Community Sport','Nutrition','Youth Mental Health',"Men's Health","Women's Health"])
+const areas = ref(['Community Sport', 'Nutrition', 'Youth Mental Health', "Men's Health", "Women's Health"])
 const filters = reactive({ q: '', area: '' })
 
 const seed = [
@@ -125,7 +209,11 @@ onMounted(async () => {
   try {
     const r = await fetch('/programs.json', { cache: 'no-store' })
     programs.value = r.ok ? await r.json() : seed
-  } catch { programs.value = seed }
+  } catch {
+    programs.value = seed
+  } finally {
+    await refreshAllRatings()
+  }
 })
 
 const filteredPrograms = computed(() => {
@@ -143,18 +231,81 @@ function selectProgram(p) {
   if (el && window.bootstrap) new window.bootstrap.Offcanvas(el).show()
 }
 
-/* Contact form */
+
+const ratingMap = reactive({}) // { [programId]: { avg, count, my } }
+
+const isAuthed = computed(() => isAuthenticated && isAuthenticated())
+const userId = computed(() => auth?.user?.email || auth?.user?.name || null)
+
+async function refreshAllRatings() {
+  const uid = userId.value
+  programs.value.forEach(p => {
+    ratingMap[p.id] = getProgramRating(p.id, uid)
+  })
+}
+function roundedAvg(id) {
+  const avg = ratingMap[id]?.avg || 0
+  return Math.round(avg)
+}
+function avgNumber(id) {
+  const avg = ratingMap[id]?.avg || 0
+  return avg.toFixed(1)
+}
+async function rateProgram(p, stars) {
+  if (!isAuthed.value) return
+  try {
+    const res = await submitProgramRating({
+      programId: p.id,
+      userId: userId.value,
+      stars,
+      comment: '' 
+    })
+    ratingMap[p.id] = res
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+
 const form = reactive({ name: '', email: '', topic: '', message: '', consent: false })
 const submitted = ref(false)
 const errors = reactive({ name: '', email: '', topic: '', message: '', consent: '' })
+const serverError = ref('')
+
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i
-const router = useRouter()
+const MAX_NAME = 60
+const MAX_MSG = 500
+const urlRegex = /https?:\/\/\S+/i          
+const repeat3 = /(.)\1{2,}/                 
 
 function validate() {
-  errors.name = form.name.length >= 2 ? '' : 'Please enter at least 2 characters.'
+  // name
+  errors.name = !form.name
+    ? 'Please enter your name.'
+    : form.name.length > MAX_NAME
+    ? `Name must be <= ${MAX_NAME} characters.`
+    : ''
+
+  // email
   errors.email = emailRegex.test(form.email) ? '' : 'Please enter a valid email address.'
+
+  // topic
   errors.topic = form.topic ? '' : 'Please select a program.'
-  errors.message = form.message.length >= 20 ? '' : 'Message must be at least 20 characters.'
+
+  
+  errors.message = !form.message
+    ? 'Message is required.'
+    : form.message.length < 20
+    ? 'Message must be at least 20 characters.'
+    : form.message.length > MAX_MSG
+    ? `Message must be <= ${MAX_MSG} characters.`
+    : urlRegex.test(form.message)
+    ? 'Please do not include URLs.'
+    : repeat3.test(form.message)
+    ? 'Please avoid repeated characters (e.g. "aaa").'
+    : ''
+
+  // consent
   errors.consent = form.consent ? '' : 'Consent is required.'
 }
 
@@ -162,21 +313,48 @@ const hasErrors = computed(() => Object.values(errors).some(Boolean))
 const canSubmit = computed(() => { validate(); return !hasErrors.value })
 const formStateClass = computed(() => (!hasErrors.value ? 'is-valid' : 'is-invalid'))
 
-function handleSubmit() {
+const isAdmin = computed(() => hasRole && hasRole('admin'))
+const formDisabled = computed(() => isAdmin.value)
+
+const router = useRouter()
+async function handleSubmit() {
   validate()
   if (hasErrors.value) return
-  if (!isAuthenticated()) {
+
+  if (!isAuthed.value) {
     router.push({ name: 'login', query: { redirect: '/' } })
     return
   }
-  submitted.value = true
-}
+  if (isAdmin.value) return
 
+  serverError.value = ''
+  try {
+    
+    const payload = {
+      name: sanitizeText(form.name),
+      email: sanitizeText(form.email),
+      topic: sanitizeText(form.topic),
+      message: sanitizeText(form.message)
+    }
+    await submitEnquiryToServer(payload)
+    submitted.value = true
+    resetForm()
+  } catch (e) {
+    const es = e?.errors || {}
+    if (es._global) serverError.value = es._global
+    if (es.name) errors.name = es.name
+    if (es.email) errors.email = es.email
+    if (es.topic) errors.topic = es.topic
+    if (es.message) errors.message = es.message
+  }
+}
 function resetForm() {
   Object.assign(form, { name: '', email: '', topic: '', message: '', consent: false })
   Object.keys(errors).forEach(k => (errors[k] = ''))
-  submitted.value = false
+  serverError.value = ''
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+
+</style>
