@@ -1,6 +1,15 @@
 <template>
   <div class="container py-3">
-    <h1 class="h5 mb-3">Admin Panel (Role: admin)</h1>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h1 class="h5 mb-0">Admin Panel (Role: admin)</h1>
+      <router-link to="/" class="btn btn-outline-primary btn-sm">← Back to Home</router-link>
+    </div>
+
+    <div class="alert alert-info py-2 mb-3">
+      Rule: only accounts whose email ends with
+      <code>@{{ ADMIN_DOMAIN }}</code>
+      are allowed to have the <b>admin</b> role. These accounts also cannot be downgraded to <b>member</b>.
+    </div>
 
     <div class="card">
       <div class="card-body">
@@ -23,8 +32,16 @@
                 <td><span class="badge text-bg-secondary text-uppercase">{{ u.role }}</span></td>
                 <td>
                   <div class="btn-group">
-                    <button class="btn btn-sm btn-outline-primary" @click="changeRole(u.email, 'admin')" :disabled="u.role==='admin'">Make Admin</button>
-                    <button class="btn btn-sm btn-outline-secondary" @click="changeRole(u.email, 'member')" :disabled="u.role==='member'">Make Member</button>
+                    <button class="btn btn-sm btn-outline-primary"
+                            @click="changeRole(u.email, 'admin')"
+                            :disabled="u.role==='admin'">
+                      Make Admin
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            @click="changeRole(u.email, 'member')"
+                            :disabled="u.role==='member' || u.email.endsWith('@' + ADMIN_DOMAIN)">
+                      Make Member
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -43,7 +60,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { getUsers, setUserRole } from '../authentication'
+import { getUsers, setUserRole, ADMIN_DOMAIN } from '../authentication'
 
 const users = ref([])
 const toast = ref('')

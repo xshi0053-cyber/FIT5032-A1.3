@@ -1,106 +1,106 @@
 // src/authentication.js
-import { reactive } from 'vue'
+import { reactive } from 'vue';
 
-export const ROLES = { ADMIN: 'admin', MEMBER: 'member' }
+export const ADMIN_DOMAIN = 'admin.nfp';
 
-export const authState = reactive({
-  user: null,   // { id, name, email, role }
-  token: null
-})
+const USERS_KEY = 'nfp_users';
+const AUTH_KEY  = 'nfp_auth_user';
 
-function uuid() {
-  if (crypto?.randomUUID) return crypto.randomUUID()
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = (Math.random() * 16) | 0, v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
+/* ---------- utils ---------- */
+const safeParse = (json, fb) => { try { return JSON.parse(json ?? ''); } catch { return fb; } };
+const readUsers  = () => safeParse(localStorage.getItem(USERS_KEY), []);
+const writeUsers = (arr) => localStorage.setItem(USERS_KEY, JSON.stringify(arr || []));
+const saveAuthUser = (u) => localStorage.setItem(AUTH_KEY, JSON.stringify(u ?? null));
+const isAdminEmail = (email) => String(email || '').toLowerCase().trim().endsWith(`@${ADMIN_DOMAIN}`);
 
-async function hashPassword(plain) {
-  const enc = new TextEncoder().encode(plain)
-  const buf = await crypto.subtle.digest('SHA-256', enc)
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('')
-}
-
-const LS_USERS   = 'nfp_users'
-const LS_SESSION = 'nfp_session'
-
-function loadUsers() {
-  try { return JSON.parse(localStorage.getItem(LS_USERS)) ?? [] } catch { return [] }
-}
-function saveUsers(users) {
-  localStorage.setItem(LS_USERS, JSON.stringify(users))
-}
-function persistSession() {
-  localStorage.setItem(LS_SESSION, JSON.stringify({ user: authState.user, token: authState.token }))
-}
-function restoreSession() {
+function cryptoId() {
   try {
-    const s = JSON.parse(localStorage.getItem(LS_SESSION))
-    if (s?.user && s?.token) { authState.user = s.user; authState.token = s.token }
-  } catch {}
-}
-
-
-export async function register({ name, email, password }) {
-  const users = loadUsers()
-  if (users.some(u => u.email === email)) throw new Error('Email already registered.')
-  const passwordHash = await hashPassword(password)
-  const role = users.length === 0 ? ROLES.ADMIN : ROLES.MEMBER
-  const user = { id: uuid(), name, email, passwordHash, role, createdAt: Date.now() }
-  users.push(user)
-  saveUsers(users)
-  return { id: user.id, name: user.name, email: user.email, role: user.role }
-}
-
-export async function login({ email, password }) {
-  const users = loadUsers()
-  const user = users.find(u => u.email === email)
-  if (!user) throw new Error('Invalid email or password.')
-  const passwordHash = await hashPassword(password)
-  if (passwordHash !== user.passwordHash) throw new Error('Invalid email or password.')
-
-  authState.user  = { id: user.id, name: user.name, email: user.email, role: user.role }
-  authState.token = uuid()
-  persistSession()
-  return authState.user
-}
-
-export function logout() {
-  authState.user = null
-  authState.token = null
-  localStorage.removeItem(LS_SESSION)
-}
-
-export function isAuthenticated() {
-  return !!authState.user && !!authState.token
-}
-export function hasRole(role) {
-  return !!authState.user && authState.user.role === role
-}
-export function isAuthorized(roles = []) {
-  if (!roles.length) return true
-  return !!authState.user && roles.includes(authState.user.role)
-}
-
-
-export function getUsers() {
-  
-  return loadUsers().map(u => ({
-    id: u.id, name: u.name, email: u.email, role: u.role, createdAt: u.createdAt
-  }))
-}
-export function setUserRole(email, role) {
-  const users = loadUsers()
-  const u = users.find(x => x.email === email)
-  if (!u) throw new Error('User not found.')
-  u.role = role
-  saveUsers(users)
-  if (authState.user && authState.user.email === email) {
-    authState.user.role = role
-    persistSession()
+    return Array.from(crypto.getRandomValues(new Uint32Array(3)))
+      .map(n => n.toString(36)).join('');
+  } catch {
+    return Math.random().toString(36).slice(2) + Date.now().toString(36);
   }
 }
 
 
-restoreSession()
+export const authState = reactive({
+  user: safeParse(localStorage.getItem(AUTH_KEY), null), // {name, email, role} | null
+});
+
+/* ---------- helpers ---------- */
+export const isAuthenticated = () => !!authState.user;
+export const hasRole        = (role) => !!authState.user && authState.user.role === role;
+export const isAuthorized   = (roles = []) =>
+  !!authState.user && (roles.length === 0 || roles.includes(authState.user.role));
+
+export const getUsers = () => readUsers();
+
+
+export function setUserRole(email, role) {
+  const users = readUsers();
+  const e = String(email || '').toLowerCase().trim();
+  const u = users.find(x => x.email === e);
+  if (!u) return;
+
+  if (role === 'admin'  && !isAdminEmail(e)) return;
+  if (role === 'member' &&  isAdminEmail(e)) return;
+
+  u.role = role;
+  writeUsers(users);
+
+ 
+  if (authState.user && authState.user.email === e) {
+    authState.user = { ...authState.user, role: u.role };
+    saveAuthUser(authState.user);
+  }
+}
+
+/* ---------- actions ---------- */
+export async function register({ name, email, password }) {
+  const users = readUsers();
+  const e = String(email || '').toLowerCase().trim();
+  if (users.some(u => u.email === e)) throw new Error('Email already exists.');
+
+  const role = isAdminEmail(e) ? 'admin' : 'member';
+  const user = {
+    id: cryptoId(),
+    name: String(name || '').trim(),
+    email: e,
+    password,
+    role,
+    createdAt: Date.now(),
+  };
+  users.push(user);
+  writeUsers(users);
+
+  authState.user = { name: user.name, email: user.email, role: user.role };
+  saveAuthUser(authState.user);
+  return authState.user;
+}
+
+export async function login({ email, password }) {
+  const users = readUsers();
+  const e = String(email || '').toLowerCase().trim();
+  const u = users.find(x => x.email === e && x.password === password);
+  if (!u) throw new Error('Invalid credentials.');
+
+ 
+  const expected = isAdminEmail(e) ? 'admin' : 'member';
+  if (u.role !== expected) { u.role = expected; writeUsers(users); }
+
+  authState.user = { name: u.name, email: u.email, role: u.role };
+  saveAuthUser(authState.user);
+  return authState.user;
+}
+
+export function logout() {
+  authState.user = null;
+  saveAuthUser(null);
+}
+
+/* ---------- cross-tab sync ---------- */
+window.addEventListener('storage', (e) => {
+  if (e.key === AUTH_KEY) {
+    authState.user = safeParse(e.newValue, null);
+  }
+});
