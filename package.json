@@ -1,0 +1,43 @@
+{
+  "name": "nfp-web-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@emailjs/browser": "^4.4.1",
+    "@fullcalendar/core": "^6.1.19",
+    "@fullcalendar/daygrid": "^6.1.19",
+    "@fullcalendar/interaction": "^6.1.19",
+    "@fullcalendar/timegrid": "^6.1.19",
+    "@sendgrid/mail": "^8.1.6",
+    "axios": "^1.12.2",
+    "bootstrap": "^5.3.8",
+    "chart.js": "^3.9.1",
+    "cors": "^2.8.5",
+    "datatables.net": "^2.3.4",
+    "datatables.net-bs5": "^2.3.4",
+    "datatables.net-dt": "^2.3.4",
+    "datatables.net-vue3": "^3.0.4",
+    "express": "^5.1.0",
+    "firebase": "^12.4.0",
+    "firebase-admin": "^13.5.0",
+    "firebase-functions": "^6.5.0",
+    "jspdf": "^3.0.3",
+    "jspdf-autotable": "^5.0.2",
+    "maplibre-gl": "^5.9.0",
+    "nodemailer": "^7.0.9",
+    "papaparse": "^5.5.3",
+    "vue": "^3.5.18",
+    "vue-chart-3": "^3.1.8",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "vite": "^7.1.2"
+  }
+}
